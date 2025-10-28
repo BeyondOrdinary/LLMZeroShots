@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama's Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a2980, #26d0ce);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+        }
+        
+        /* Parallax Backgrounds */
+        .background {
+            position: absolute;
+            width: 200%;
+            height: 100%;
+            top: 0;
+        }
+        
+        #bg-back {
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+            z-index: 1;
+        }
+        
+        #bg-middle {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23a8e6cf"/><circle cx="20" cy="80" r="10" fill="%2387CEEB"/><circle cx="60" cy="60" r="15" fill="%2387CEEB"/></svg>');
+            background-size: 200px 200px;
+            z-index: 2;
+        }
+        
+        #bg-front {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23dcedc1"/><circle cx="30" cy="90" r="8" fill="%23a8e6cf"/><circle cx="70" cy="85" r="12" fill="%23a8e6cf"/></svg>');
+            background-size: 150px 150px;
+            z-index: 3;
+        }
+        
+        /* Game Elements */
+        #player {
+            position: absolute;
+            bottom: 100px;
+            left: 100px;
+            width: 80px;
+            height: 100px;
+            z-index: 10;
+        }
+        
+        .alpaca-body {
+            position: absolute;
+            width: 60px;
+            height: 70px;
+            background: #f5f5f5;
+            border-radius: 50% 50% 40% 40%;
+            bottom: 0;
+            left: 10px;
+        }
+        
+        .alpaca-head {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: #f5f5f5;
+            border-radius: 50%;
+            top: -20px;
+            left: 15px;
+        }
+        
+        .alpaca-ear {
+            position: absolute;
+            width: 15px;
+            height: 30px;
+            background: #f5f5f5;
+            border-radius: 50%;
+            top: -15px;
+        }
+        
+        .ear-left {
+            left: 10px;
+            transform: rotate(-20deg);
+        }
+        
+        .ear-right {
+            right: 10px;
+            transform: rotate(20deg);
+        }
+        
+        .alpaca-eye {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #333;
+            border-radius: 50%;
+            top: 15px;
+        }
+        
+        .eye-left {
+            left: 15px;
+        }
+        
+        .eye-right {
+            right: 15px;
+        }
+        
+        .alpaca-mouth {
+            position: absolute;
+            width: 20px;
+            height: 10px;
+            background: #ff6b6b;
+            border-radius: 0 0 10px 10px;
+            bottom: 10px;
+            left: 15px;
+        }
+        
+        .alpaca-leg {
+            position: absolute;
+            width: 12px;
+            height: 30px;
+            background: #f5f5f5;
+            bottom: -30px;
+        }
+        
+        .leg-front {
+            left: 20px;
+        }
+        
+        .leg-back {
+            right: 20px;
+        }
+        
+        .obstacle {
+            position: absolute;
+            bottom: 100px;
+            width: 40px;
+            height: 60px;
+            background: #8B4513;
+            border-radius: 10px 10px 0 0;
+            z-index: 5;
+        }
+        
+        .obstacle::before {
+            content: '';
+            position: absolute;
+            width: 50px;
+            height: 20px;
+            background: #A0522D;
+            border-radius: 50%;
+            top: -15px;
+            left: -5px;
+        }
+        
+        .obstacle::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: #32CD32;
+            border-radius: 50%;
+            top: -25px;
+            left: 17px;
+        }
+        
+        /* UI Elements */
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #score {
+            margin-bottom: 10px;
+        }
+        
+        #high-score {
+            color: #FFD700;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            display: none;
+        }
+        
+        #game-over h1 {
+            font-size: 48px;
+            color: #FF6B6B;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        #final-score {
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+        
+        #retry-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+        }
+        
+        #retry-btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+        }
+        
+        #start-screen h1 {
+            font-size: 48px;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        #start-screen p {
+            font-size: 24px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        #start-btn {
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+        }
+        
+        #start-btn:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+        
+        /* Ground */
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to top, #8B4513, #A0522D);
+            z-index: 4;
+        }
+        
+        /* Jump animation */
+        @keyframes jump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-150px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .jumping {
+            animation: jump 0.6s linear;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Parallax Backgrounds -->
+        <div class="background" id="bg-back"></div>
+        <div class="background" id="bg-middle"></div>
+        <div class="background" id="bg-front"></div>
+        
+        <!-- Ground -->
+        <div id="ground"></div>
+        
+        <!-- Player Character -->
+        <div id="player">
+            <div class="alpaca-body"></div>
+            <div class="alpaca-head">
+                <div class="alpaca-ear ear-left"></div>
+                <div class="alpaca-ear ear-right"></div>
+                <div class="alpaca-eye eye-left"></div>
+                <div class="alpaca-eye eye-right"></div>
+                <div class="alpaca-mouth"></div>
+            </div>
+            <div class="alpaca-leg leg-front"></div>
+            <div class="alpaca-leg leg-back"></div>
+        </div>
+        
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <div id="score">Score: 0</div>
+            <div id="high-score">High Score: 0</div>
+        </div>
+        
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <h1>Ollama's Adventure</h1>
+            <p>Help Ollama jump over obstacles! Press SPACE or tap to jump. Survive as long as you can!</p>
+            <button id="start-btn">Start Game</button>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="game-over">
+            <h1>Game Over!</h1>
+            <div id="final-score">Score: 0</div>
+            <button id="retry-btn">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('high-score');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        
+        let gameRunning = false;
+        let score = 0;
+        let highScore = localStorage.getItem('ollamaHighScore') || 0;
+        let gameSpeed = 5;
+        let gravity = 0.9;
+        let playerVelocity = 0;
+        let isJumping = false;
+        let obstacles = [];
+        let obstacleInterval;
+        let gameLoop;
+        
+        // Audio elements
+        const jumpSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
+        const gameOverSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
+        const scoreSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
+        
+        // Create audio contexts for better sound generation
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Function to play a tone
+        function playTone(frequency, duration, type = 'sine') {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = type;
+            oscillator.frequency.value = frequency;
+            gainNode.gain.value = 0.3;
+            
+            oscillator.start();
+            setTimeout(() => {
+                oscillator.stop();
+            }, duration);
+        }
+        
+        // Play jump sound
+        function playJumpSound() {
+            playTone(523.25, 200, 'sine'); // C5
+        }
+        
+        // Play score sound
+        function playScoreSound() {
+            playTone(659.25, 100, 'sine'); // E5
+            setTimeout(() => {
+                playTone(783.99, 100, 'sine'); // G5
+            }, 100);
+        }
+        
+        // Play game over sound
+        function playGameOverSound() {
+            playTone(220, 300, 'sawtooth'); // A3
+            setTimeout(() => {
+                playTone(164.81, 500, 'sawtooth'); // E3
+            }, 300);
+        }
+        
+        // Initialize high score display
+        highScoreDisplay.textContent = `High Score: ${highScore}`;
+        
+        // Start game
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            gameSpeed = 5;
+            obstacles = [];
+            updateScore();
+            
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            // Clear existing obstacles
+            document.querySelectorAll('.obstacle').forEach(obs => obs.remove());
+            
+            // Start game loop
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            gameLoop = requestAnimationFrame(updateGame);
+            
+            // Start obstacle generation
+            if (obstacleInterval) clearInterval(obstacleInterval);
+            obstacleInterval = setInterval(createObstacle, 1500);
+        }
+        
+        // Create obstacle
+        function createObstacle() {
+            if (!gameRunning) return;
+            
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            obstacle.style.right = '-40px';
+            gameContainer.appendChild(obstacle);
+            obstacles.push({
+                element: obstacle,
+                passed: false
+            });
+        }
+        
+        // Update game state
+        function updateGame() {
+            if (!gameRunning) return;
+            
+            // Move backgrounds for parallax effect
+            moveBackgrounds();
+            
+            // Move obstacles
+            moveObstacles();
+            
+            // Apply gravity to player
+            if (isJumping) {
+                playerVelocity += gravity;
+                const newY = parseFloat(player.style.bottom || '100') - playerVelocity;
+                
+                if (newY <= 100) {
+                    player.style.bottom = '100px';
+                    isJumping = false;
+                    playerVelocity = 0;
+                } else {
+                    player.style.bottom = newY + 'px';
+                }
+            }
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Increase score
+            score += 1;
+            updateScore();
+            
+            // Increase difficulty
+            if (score % 500 === 0) {
+                gameSpeed += 0.5;
+            }
+            
+            gameLoop = requestAnimationFrame(updateGame);
+        }
+        
+        // Move backgrounds for parallax effect
+        function moveBackgrounds() {
+            const back = document.getElementById('bg-back');
+            const middle = document.getElementById('bg-middle');
+            const front = document.getElementById('bg-front');
+            
+            back.style.backgroundPositionX = (parseFloat(back.style.backgroundPositionX || '0') - gameSpeed * 0.2) + 'px';
+            middle.style.backgroundPositionX = (parseFloat(middle.style.backgroundPositionX || '0') - gameSpeed * 0.5) + 'px';
+            front.style.backgroundPositionX = (parseFloat(front.style.backgroundPositionX || '0') - gameSpeed) + 'px';
+        }
+        
+        // Move obstacles
+        function moveObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                const currentRight = parseFloat(obstacle.element.style.right || '0');
+                const newRight = currentRight + gameSpeed;
+                
+                obstacle.element.style.right = newRight + 'px';
+                
+                // Remove obstacles that are off-screen
+                if (newRight > 800) {
+                    obstacle.element.remove();
+                    obstacles.splice(i, 1);
+                }
+                
+                // Increase score when passing an obstacle
+                if (!obstacle.passed && newRight > 140) {
+                    obstacle.passed = true;
+                    playScoreSound();
+                }
+            }
+        }
+        
+        // Check for collisions
+        function checkCollisions() {
+            const playerRect = player.getBoundingClientRect();
+            
+            for (const obstacle of obstacles) {
+                const obstacleRect = obstacle.element.getBoundingClientRect();
+                
+                // Simple collision detection
+                if (
+                    playerRect.left < obstacleRect.right &&
+                    playerRect.right > obstacleRect.left &&
+                    playerRect.top < obstacleRect.bottom &&
+                    playerRect.bottom > obstacleRect.top
+                ) {
+                    gameOver();
+                    return;
+                }
+            }
+        }
+        
+        // Update score display
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+        
+        // Player jump
+        function jump() {
+            if (!gameRunning || isJumping) return;
+            
+            isJumping = true;
+            playerVelocity = -18;
+            player.classList.add('jumping');
+            playJumpSound();
+            
+            // Remove jump class after animation completes
+            setTimeout(() => {
+                player.classList.remove('jumping');
+            }, 600);
+        }
+        
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            playGameOverSound();
+            
+            // Update high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('ollamaHighScore', highScore);
+                highScoreDisplay.textContent = `High Score: ${highScore}`;
+            }
+            
+            // Show game over screen
+            finalScoreDisplay.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+            
+            // Clean up
+            cancelAnimationFrame(gameLoop);
+            clearInterval(obstacleInterval);
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        retryBtn.addEventListener('click', startGame);
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (startScreen.style.display !== 'none') {
+                    startGame();
+                } else if (gameOverScreen.style.display !== 'none') {
+                    startGame();
+                } else {
+                    jump();
+                }
+            }
+        });
+        
+        gameContainer.addEventListener('click', () => {
+            if (gameRunning) {
+                jump();
+            }
+        });
+        
+        // Touch support for mobile
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameRunning) {
+                jump();
+            }
+        });
+    </script>
+</body>
+</html>
