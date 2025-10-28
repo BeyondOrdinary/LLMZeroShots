@@ -1,0 +1,3 @@
+ChatGPT5
+
+create a simple mood-tracking app that lets users log their moods and view a chart of their mood trends over time. The app should have the option to export mood data and set daily reminders for mood check-ins. Users log moods and see color‑coded charts showing emotional trends over time. Add reminders and data export features. "create a beautiful mood tracking app with emotional trend visualization, reminders, and data export!"

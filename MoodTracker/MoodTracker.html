@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mood Tracker — Trends, Reminders, Export</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Chart.js for trend visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
+  <style>
+    :root{
+      --bg: #0f1220;
+      --card: #161a2b;
+      --muted: #8b90a6;
+      --text: #e9ebff;
+      --accent: #6c8cff;
+      --accent-2: #5de4c7;
+      --danger: #ff6b6b;
+      --ring: #2b3150;
+      --border: #222742;
+      --btn: #1c2240;
+      --btn-hover: #242b52;
+      --good: #42d392;
+      --okay: #ffd166;
+      --meh: #a5b4fc;
+      --bad: #ff9f1c;
+      --awful: #ef476f;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 14px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --muted: #5b5f73;
+        --text: #0f1220;
+        --accent: #4c6fff;
+        --accent-2: #0fb9b1;
+        --danger: #e03a3a;
+        --ring: #e9ecff;
+        --border: #e6e8f2;
+        --btn: #eef1ff;
+        --btn-hover: #e2e7ff;
+        --shadow: 0 8px 24px rgba(15,18,32,0.08);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px;
+      background: radial-gradient(1200px 800px at 80% -10%, rgba(108,140,255,0.18), transparent 60%),
+                  radial-gradient(900px 600px at -10% 110%, rgba(93,228,199,0.14), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    .container {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; gap: 18px;
+      grid-template-columns: 1.1fr 1fr;
+    }
+    header {
+      max-width: 1100px; margin: 0 auto 18px auto;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .logo {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: grid; place-items: center; font-weight: 800; color: #0f1220;
+      background: conic-gradient(from 210deg, var(--accent), var(--accent-2));
+      box-shadow: var(--shadow);
+    }
+    h1 { margin: 0; font-size: 22px; letter-spacing: 0.2px; }
+    .card {
+      background: linear-gradient(180deg, color-mix(in oklab, var(--card) 90%, transparent), var(--card));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .card .hd {
+      padding: 16px 18px; border-bottom: 1px solid var(--border);
+      display:flex; align-items:center; justify-content: space-between; gap: 12px;
+    }
+    .card .bd { padding: 16px 18px; }
+    .row { display: grid; gap: 12px; }
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    input[type="date"], select, input[type="time"], input[type="text"], textarea {
+      width: 100%; padding: 12px 12px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); outline: none;
+      transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+    }
+    textarea { resize: vertical; min-height: 72px; }
+    input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); border-color: var(--accent); }
+    .actions { display:flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      border: 1px solid var(--border);
+      background: var(--btn); color: var(--text);
+      padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: 600;
+      transition: background .15s ease, transform .02s ease, border-color .15s ease;
+    }
+    button:hover { background: var(--btn-hover); }
+    button:active { transform: translateY(1px); }
+    .primary { background: var(--accent); border-color: transparent; color: white; }
+    .danger { background: var(--danger); border-color: transparent; color: white; }
+    .pill {
+      display:inline-flex; align-items:center; gap:8px; padding: 8px 12px; border-radius: 999px;
+      background: var(--bg); border:1px solid var(--border); color: var(--muted); font-size: 12px; font-weight: 600;
+    }
+    .legend { display:flex; gap:10px; flex-wrap: wrap; }
+    .dot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; }
+    .tbl { width:100%; border-collapse: collapse; }
+    .tbl th, .tbl td { border-bottom:1px solid var(--border); padding: 10px 6px; text-align:left; }
+    .tbl th { color: var(--muted); font-size:12px; text-transform: uppercase; letter-spacing: .06em; }
+    .empty {
+      padding: 18px; text-align: center; color: var(--muted); border:1px dashed var(--border); border-radius: 12px;
+      background: color-mix(in oklab, var(--bg) 85%, transparent);
+    }
+    .chip {
+      padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; display:inline-block;
+      color: #0f1220;
+    }
+    .m5  { background: var(--good); }
+    .m4  { background: var(--okay); }
+    .m3  { background: var(--meh); }
+    .m2  { background: var(--bad); color: #0f1220; }
+    .m1  { background: var(--awful); color: white; }
+    .footer {
+      max-width:1100px; margin: 16px auto 0; color: var(--muted); font-size: 12px; text-align: center;
+    }
+    .wrap { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    @media (max-width: 980px){
+      .container { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">🙂</div>
+      <div>
+        <h1>Mood Tracker</h1>
+        <div class="wrap">
+          <span class="pill">Trends</span>
+          <span class="pill">Reminders</span>
+          <span class="pill">Export</span>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--awful)"></i> Awful</span>
+      <span><i class="dot" style="background:var(--bad)"></i> Bad</span>
+      <span><i class="dot" style="background:var(--meh)"></i> Meh</span>
+      <span><i class="dot" style="background:var(--okay)"></i> Okay</span>
+      <span><i class="dot" style="background:var(--good)"></i> Great</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Left: Log + List -->
+    <section class="card">
+      <div class="hd">
+        <strong>Add Mood</strong>
+        <div class="wrap">
+          <button id="exportCsvBtn">Export CSV</button>
+          <button id="clearAllBtn" class="danger" title="Deletes all mood entries">Clear All</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="row">
+          <div class="grid-2">
+            <div>
+              <label for="date">Date</label>
+              <input type="date" id="date"/>
+            </div>
+            <div>
+              <label for="time">Time (optional)</label>
+              <input type="time" id="time"/>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div>
+              <label for="mood">Mood</label>
+              <select id="mood">
+                <option value="5">😀 Great (5)</option>
+                <option value="4">😊 Okay (4)</option>
+                <option value="3" selected>😐 Meh (3)</option>
+                <option value="2">☹️ Bad (2)</option>
+                <option value="1">😭 Awful (1)</option>
+              </select>
+            </div>
+            <div>
+              <label for="tag">Tag (optional)</label>
+              <input type="text" id="tag" placeholder="e.g., Work, Family, Sleep"/>
+            </div>
+          </div>
+          <div>
+            <label for="note">Note (optional)</label>
+            <textarea id="note" placeholder="Context, triggers, wins…"></textarea>
+          </div>
+          <div class="actions">
+            <button class="primary" id="addBtn">Log Mood</button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:16px">
+          <table class="tbl" id="table">
+            <thead>
+              <tr>
+                <th>Date/Time</th>
+                <th>Mood</th>
+                <th>Tag</th>
+                <th>Note</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <div id="empty" class="empty" style="display:none">No entries yet — log your first mood above.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Chart + Reminders -->
+    <section class="card">
+      <div class="hd">
+        <strong>Trends</strong>
+        <span id="avgBadge" class="pill">Average: —</span>
+      </div>
+      <div class="bd">
+        <canvas id="chart" height="240" aria-label="Mood trend line chart"></canvas>
+      </div>
+
+      <div class="hd"><strong>Daily Reminder</strong></div>
+      <div class="bd">
+        <div class="grid-2">
+          <div>
+            <label for="reminderTime">Reminder time</label>
+            <input type="time" id="reminderTime">
+          </div>
+          <div>
+            <label for="reminderToggle">Enable</label>
+            <select id="reminderToggle">
+              <option value="off">Off</option>
+              <option value="on">On</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px">
+          <button id="saveReminder" class="primary">Save Reminder</button>
+          <button id="testReminder">Test Notification</button>
+        </div>
+        <div id="reminderStatus" class="wrap" style="margin-top:10px; color:var(--muted)"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    Data is stored locally in your browser. Export a CSV anytime. Notifications need permission and work while this tab is open.
+  </div>
+
+  <script>
+    // ------ Utilities ------
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const STORAGE_KEY = 'mood.entries.v1';
+    const REM_KEY = 'mood.reminder.v1';
+
+    const moodMap = {
+      1: { label: 'Awful',  color: getComputedStyle(document.documentElement).getPropertyValue('--awful').trim(),  chip: 'm1', emoji:'😭'},
+      2: { label: 'Bad',    color: getComputedStyle(document.documentElement).getPropertyValue('--bad').trim(),    chip: 'm2', emoji:'☹️'},
+      3: { label: 'Meh',    color: getComputedStyle(document.documentElement).getPropertyValue('--meh').trim(),    chip: 'm3', emoji:'😐'},
+      4: { label: 'Okay',   color: getComputedStyle(document.documentElement).getPropertyValue('--okay').trim(),   chip: 'm4', emoji:'😊'},
+      5: { label: 'Great',  color: getComputedStyle(document.documentElement).getPropertyValue('--good').trim(),   chip: 'm5', emoji:'😀'}
+    };
+
+    function todayISODate(){
+      const d = new Date();
+      const tzOff = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - tzOff*60000);
+      return local.toISOString().slice(0,10);
+    }
+
+    function loadEntries(){
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveEntries(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+
+    function loadReminder(){
+      try { return JSON.parse(localStorage.getItem(REM_KEY) || '{"enabled":false,"time":"21:00"}'); }
+      catch { return {enabled:false, time:'21:00'}; }
+    }
+    function saveReminder(obj){ localStorage.setItem(REM_KEY, JSON.stringify(obj)); }
+
+    // ------ State ------
+    let entries = loadEntries().map(e => ({...e, ts: new Date(e.ts)}));
+    let chart;
+
+    // ------ UI Init ------
+    $('#date').value = todayISODate();
+
+    // ------ Table Render ------
+    function renderTable(){
+      const tbody = $('#tbody');
+      tbody.innerHTML = '';
+      if (!entries.length){
+        $('#empty').style.display = 'block';
+        return;
+      }
+      $('#empty').style.display = 'none';
+
+      // sort ascending by ts
+      entries.sort((a,b)=>a.ts - b.ts);
+
+      for(const [i,e] of entries.entries()){
+        const tr = document.createElement('tr');
+        const m = moodMap[e.mood];
+        tr.innerHTML = `
+          <td>${new Intl.DateTimeFormat(undefined,{dateStyle:'medium', timeStyle: e.time? 'short':undefined}).format(e.ts)}</td>
+          <td><span class="chip ${m.chip}" title="${m.label}">${m.emoji} ${m.label} (${e.mood})</span></td>
+          <td>${e.tag? sanitize(e.tag): ''}</td>
+          <td>${e.note? sanitize(e.note): ''}</td>
+          <td><button data-del="${i}" title="Delete entry">🗑️</button></td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // basic sanitize
+    function sanitize(s){ return String(s).replace(/[<>]/g, c=>({ '<':'&lt;','>':'&gt;' }[c])); }
+
+    // ------ Chart ------
+    function computeSeries(){
+      // group by day; if multiple in one day, take average
+      const byDay = new Map();
+      for(const e of entries){
+        const key = e.ts.toISOString().slice(0,10);
+        if(!byDay.has(key)) byDay.set(key, []);
+        byDay.get(key).push(e.mood);
+      }
+      const labels = Array.from(byDay.keys()).sort();
+      const data = labels.map(k => {
+        const arr = byDay.get(k);
+        return arr.reduce((a,b)=>a+b,0) / arr.length;
+      });
+      const colors = data.map(v => moodMap[Math.round(v)].color);
+      return { labels, data, colors };
+    }
+
+    function renderChart(){
+      const ctx = $('#chart');
+      const {labels, data, colors} = computeSeries();
+
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Mood (1–5)',
+            data,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 5,
+            pointHoverRadius: 6,
+            parsing: false,
+            borderWidth: 2,
+            segment: {
+              borderColor: (ctx)=> {
+                const v = ctx.p1.parsed.y ?? 3;
+                return moodMap[Math.round(v)].color;
+              }
+            },
+            borderColor: colors,
+            backgroundColor: (ctx)=> {
+              const {chart, dataIndex} = ctx;
+              const v = chart.data.datasets[0].data[dataIndex] ?? 3;
+              const c = moodMap[Math.round(v)].color;
+              return hexToRgba(c, 0.16);
+            },
+            pointBackgroundColor: colors,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales:{
+            y: { min:1, max:5, ticks:{ stepSize:1 } },
+            x: { ticks: { autoSkip: true, maxTicksLimit: 10 } }
+          },
+          plugins:{
+            legend:{ display:false },
+            tooltip:{ callbacks:{
+              label(ctx){
+                const v = ctx.parsed.y;
+                return `${moodMap[Math.round(v)].emoji} ${moodMap[Math.round(v)].label} (${v.toFixed(2)})`;
+              }
+            }}
+          }
+        }
+      });
+
+      // Average badge
+      if (entries.length){
+        const avg = (entries.reduce((s,e)=>s+e.mood,0) / entries.length).toFixed(2);
+        $('#avgBadge').textContent = `Average: ${avg}`;
+      } else {
+        $('#avgBadge').textContent = 'Average: —';
+      }
+    }
+
+    function hexToRgba(hex, a=1){
+      const h = hex.replace('#','').trim();
+      const v = h.length===3 ? h.split('').map(x=>x+x).join('') : h;
+      const r = parseInt(v.slice(0,2),16);
+      const g = parseInt(v.slice(2,4),16);
+      const b = parseInt(v.slice(4,6),16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    // ------ Add / Delete ------
+    $('#addBtn').addEventListener('click', ()=>{
+      const d = $('#date').value || todayISODate();
+      const t = $('#time').value;
+      const mood = Number($('#mood').value);
+      const tag = $('#tag').value.trim();
+      const note = $('#note').value.trim();
+
+      // Build timestamp in local time
+      const ts = t ? new Date(`${d}T${t}`) : new Date(`${d}T12:00`);
+      entries.push({ ts, date:d, time:t||null, mood, tag, note });
+
+      saveEntries(entries);
+      renderTable();
+      renderChart();
+
+      // reset quick fields (keep date)
+      $('#note').value = '';
+      $('#tag').value = '';
+    });
+
+    $('#tbody').addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-del]');
+      if (!btn) return;
+      const idx = Number(btn.getAttribute('data-del'));
+      // Map index to current sorted entries
+      const sorted = [...entries].sort((a,b)=>a.ts - b.ts);
+      const item = sorted[idx];
+      const realIndex = entries.indexOf(item);
+      if (realIndex >= 0) entries.splice(realIndex,1);
+      saveEntries(entries);
+      renderTable();
+      renderChart();
+    });
+
+    $('#clearAllBtn').addEventListener('click', ()=>{
+      if (!entries.length) return;
+      if (confirm('Delete ALL mood entries? This cannot be undone.')){
+        entries = [];
+        saveEntries(entries);
+        renderTable();
+        renderChart();
+      }
+    });
+
+    // ------ Export CSV ------
+    $('#exportCsvBtn').addEventListener('click', ()=>{
+      const header = ['date','time','timestamp_iso','mood','mood_label','tag','note'];
+      const rows = entries
+        .sort((a,b)=>a.ts - b.ts)
+        .map(e => [
+          e.date || e.ts.toISOString().slice(0,10),
+          e.time || '',
+          e.ts.toISOString(),
+          e.mood,
+          moodMap[e.mood]?.label || '',
+          e.tag ? safeCsv(e.tag) : '',
+          e.note ? safeCsv(e.note) : ''
+        ]);
+      const csv = [header, ...rows].map(r => r.map(csvField).join(',')).join('\r\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mood-data-${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    });
+
+    function csvField(v){
+      if (v == null) return '';
+      const s = String(v);
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    }
+    function safeCsv(s){ return s.replace(/\r?\n/g, ' ').trim(); }
+
+    // ------ Reminders ------
+    const rem = loadReminder();
+    $('#reminderTime').value = rem.time || '21:00';
+    $('#reminderToggle').value = rem.enabled ? 'on' : 'off';
+    updateReminderStatus();
+
+    $('#saveReminder').addEventListener('click', async ()=>{
+      const enabled = $('#reminderToggle').value === 'on';
+      const time = $('#reminderTime').value || '21:00';
+
+      if (enabled){
+        const ok = await ensureNotificationPermission();
+        if (!ok){
+          $('#reminderToggle').value = 'off';
+          toast('Notifications are blocked. Enable them in your browser settings.');
+          saveReminder({enabled:false, time});
+          updateReminderStatus();
+          return;
+        }
+      }
+
+      saveReminder({enabled, time});
+      updateReminderStatus();
+      scheduleNextCheck(); // reset loop with new time
+      toast('Reminder saved.');
+    });
+
+    $('#testReminder').addEventListener('click', ()=>{
+      notify('Mood check-in', 'How are you feeling right now? Log a quick entry.');
+    });
+
+    function updateReminderStatus(){
+      const {enabled, time} = loadReminder();
+      const el = $('#reminderStatus');
+      if (!enabled){
+        el.textContent = 'Reminders are off.';
+        return;
+      }
+      const next = nextOccurrence(time);
+      el.textContent = `Reminder ON — next at ${new Intl.DateTimeFormat(undefined,{dateStyle:'medium', timeStyle:'short'}).format(next)}.`;
+    }
+
+    async function ensureNotificationPermission(){
+      if (!('Notification' in window)) { alert('This browser does not support notifications.'); return false; }
+      if (Notification.permission === 'granted') return true;
+      if (Notification.permission !== 'denied'){
+        const p = await Notification.requestPermission();
+        return p === 'granted';
+      }
+      return false;
+    }
+
+    function notify(title, body){
+      if ('Notification' in window && Notification.permission === 'granted'){
+        new Notification(title, { body, icon: undefined });
+      } else {
+        // Fallback if notifications aren’t available
+        alert(`${title}\n\n${body}`);
+      }
+    }
+
+    function nextOccurrence(hhmm){
+      const [hh,mm] = hhmm.split(':').map(Number);
+      const now = new Date();
+      const next = new Date();
+      next.setHours(hh, mm, 0, 0);
+      if (next <= now) next.setDate(next.getDate()+1);
+      return next;
+    }
+
+    // check every 30s whether we're within the minute of reminder time
+    let reminderTimer;
+    function scheduleNextCheck(){
+      if (reminderTimer) clearInterval(reminderTimer);
+      reminderTimer = setInterval(()=>{
+        const {enabled, time} = loadReminder();
+        if (!enabled) return;
+        const now = new Date();
+        const [hh,mm] = (time || '21:00').split(':').map(Number);
+        if (now.getHours() === hh && now.getMinutes() === mm && now.getSeconds() < 30){
+          notify('Mood check-in', 'How are you feeling right now? Log a quick entry.');
+        }
+      }, 30 * 1000);
+    }
+    scheduleNextCheck();
+
+    // ------ Initial paint ------
+    renderTable();
+    renderChart();
+
+    // small toast
+    function toast(msg){
+      const el = document.createElement('div');
+      el.textContent = msg;
+      el.style.cssText = `
+        position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+        background: var(--card); color: var(--text);
+        border: 1px solid var(--border); padding: 10px 14px; border-radius: 999px;
+        box-shadow: var(--shadow); z-index: 9999; opacity: 0; transition: opacity .2s ease;
+      `;
+      document.body.appendChild(el);
+      requestAnimationFrame(()=> el.style.opacity = 1);
+      setTimeout(()=> {
+        el.style.opacity = 0; setTimeout(()=> el.remove(), 200);
+      }, 1600);
+    }
+
+    // Accessibility: enter to submit if focus in note/tag/time/mood
+    ;['note','tag','time','mood'].forEach(id=>{
+      const el = document.getElementById(id);
+      el.addEventListener('keydown',(e)=>{ if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); $('#addBtn').click(); }});
+    });
+
+    // Ensure date defaults to today if user clears it
+    $('#date').addEventListener('change', ()=>{ if (!$('#date').value) $('#date').value = todayISODate(); });
+  </script>
+</body>
+</html>
