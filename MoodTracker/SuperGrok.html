@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BlissMood – Your Emotional Journey</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    :root {
+      --mood-happy: #f59e0b;     /* Amber */
+      --mood-calm: #10b981;      /* Emerald */
+      --mood-neutral: #6b7280;   /* Gray */
+      --mood-sad: #3b82f6;       /* Blue */
+      --mood-anxious: #8b5cf6;   /* Violet */
+    }
+    .mood-btn.active {
+      transform: scale(1.15);
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    }
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 min-h-screen font-sans">
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm border-b border-gray-100">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg">
+          B
+        </div>
+        <h1 class="text-2xl font-bold text-gray-800">BlissMood</h1>
+      </div>
+      <button id="exportBtn" class="flex items-center space-x-1 text-sm bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:shadow-md transition">
+        <i data-lucide="download"></i>
+        <span>Export</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8">
+
+    <!-- Mood Logging Card -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+        <i data-lucide="heart" class="w-6 h-6 mr-2 text-pink-500"></i>
+        How are you feeling today?
+      </h2>
+      <div class="grid grid-cols-5 gap-3">
+        <button class="mood-btn p-4 rounded-xl transition-all flex flex-col items-center" data-mood="happy">
+          <div class="text-4xl mb-1">😊</div>
+          <span class="text-xs font-medium text-gray-700">Happy</span>
+        </button>
+        <button class="mood-btn p-4 rounded-xl transition-all flex flex-col items-center" data-mood="calm">
+          <div class="text-4xl mb-1">😌</div>
+          <span class="text-xs font-medium text-gray-700">Calm</span>
+        </button>
+        <button class="mood-btn p-4 rounded-xl transition-all flex flex-col items-center" data-mood="neutral">
+          <div class="text-4xl mb-1">😐</div>
+          <span class="text-xs font-medium text-gray-700">Neutral</span>
+        </button>
+        <button class="mood-btn p-4 rounded-xl transition-all flex flex-col items-center" data-mood="sad">
+          <div class="text-4xl mb-1">😔</div>
+          <span class="text-xs font-medium text-gray-700">Sad</span>
+        </button>
+        <button class="mood-btn p-4 rounded-xl transition-all flex flex-col items-center" data-mood="anxious">
+          <div class="text-4xl mb-1">😰</div>
+          <span class="text-xs font-medium text-gray-700">Anxious</span>
+        </button>
+      </div>
+      <div class="mt-6">
+        <textarea id="noteInput" placeholder="Add a note (optional)..." class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"></textarea>
+        <button id="logMoodBtn" class="mt-3 w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium py-3 rounded-lg hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+          Log Mood
+        </button>
+      </div>
+    </div>
+
+    <!-- Trend Chart -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+        <i data-lucide="trending-up" class="w-6 h-6 mr-2 text-green-500"></i>
+        Your Mood Trend
+      </h2>
+      <div class="chart-container">
+        <canvas id="moodChart"></canvas>
+      </div>
+      <p class="text-center text-sm text-gray-500 mt-4" id="noDataMsg">No mood data yet. Start logging!</p>
+    </div>
+
+    <!-- Reminders & Stats -->
+    <div class="grid md:grid-cols-2 gap-6">
+      <!-- Reminder Settings -->
+      <div class="bg-white rounded-2xl shadow-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+          <i data-lucide="bell" class="w-5 h-5 mr-2 text-indigo-500"></i>
+          Daily Reminder
+        </h3>
+        <div class="space-y-3">
+          <label class="flex items-center justify-between">
+            <span class="text-sm text-gray-700">Enable Reminder</span>
+            <input type="checkbox" id="reminderToggle" class="w-5 h-5 text-purple-600 rounded focus:ring-purple-400"/>
+          </label>
+          <div id="timePicker" class="hidden">
+            <label class="block text-sm text-gray-600 mb-1">Time</label>
+            <input type="time" id="reminderTime" class="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"/>
+          </div>
+          <button id="saveReminder" class="mt-3 w-full bg-indigo-500 text-white text-sm py-2 rounded-lg hover:bg-indigo-600 transition disabled:opacity-50">
+            Save Reminder
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="bg-white rounded-2xl shadow-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 mr-2 text-teal-500"></i>
+          This Week
+        </h3>
+        <div id="weeklyStats" class="space-y-2 text-sm">
+          <p class="text-gray-600">No data this week.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-12 text-center text-xs text-gray-500 pb-6">
+    <p>BlissMood – Track your emotional journey with love ❤️</p>
+  </footer>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Mood mapping
+    const moodConfig = {
+      happy: { label: 'Happy', color: 'rgba(251, 146, 60, 0.8)', value: 5, icon: '😊' },
+      calm: { label: 'Calm', color: 'rgba(16, 185, 129, 0.8)', value: 4, icon: '😌' },
+      neutral: { label: 'Neutral', color: 'rgba(107, 114, 128, 0.8)', value: 3, icon: '😐' },
+      sad: { label: 'Sad', color: 'rgba(59, 130, 246, 0.8)', value: 2, icon: '😔' },
+      anxious: { label: 'Anxious', color: 'rgba(139, 92, 246, 0.8)', value: 1, icon: '😰' }
+    };
+
+    // DOM Elements
+    const moodButtons = document.querySelectorAll('.mood-btn');
+    const logMoodBtn = document.getElementById('logMoodBtn');
+    const noteInput = document.getElementById('noteInput');
+    const exportBtn = document.getElementById('exportBtn');
+    const reminderToggle = document.getElementById('reminderToggle');
+    const timePicker = document.getElementById('timePicker');
+    const reminderTime = document.getElementById('reminderTime');
+    const saveReminder = document.getElementById('saveReminder');
+    const noDataMsg = document.getElementById('noDataMsg');
+    const weeklyStats = document.getElementById('weeklyStats');
+
+    let selectedMood = null;
+    let moodChart = null;
+
+    // Load data from localStorage
+    let moodData = JSON.parse(localStorage.getItem('blissMoodData')) || [];
+    let reminders = JSON.parse(localStorage.getItem('blissMoodReminders')) || { enabled: false, time: '20:00' };
+
+    // Initialize UI
+    function init() {
+      updateChart();
+      updateWeeklyStats();
+      reminderToggle.checked = reminders.enabled;
+      reminderTime.value = reminders.time;
+      timePicker.classList.toggle('hidden', !reminders.enabled);
+      setupReminder();
+    }
+
+    // Mood button selection
+    moodButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        moodButtons.forEach(b => b.classList.remove('active', 'ring-4', 'ring-purple-300'));
+        btn.classList.add('active', 'ring-4', 'ring-purple-300');
+        selectedMood = btn.dataset.mood;
+        logMoodBtn.disabled = false;
+      });
+    });
+
+    // Log mood
+    logMoodBtn.addEventListener('click', () => {
+      if (!selectedMood) return;
+
+      const entry = {
+        mood: selectedMood,
+        value: moodConfig[selectedMood].value,
+        note: noteInput.value.trim(),
+        timestamp: new Date().toISOString(),
+        date: new Date().toLocaleDateString('en-CA') // YYYY-MM-DD
+      };
+
+      moodData.push(entry);
+      localStorage.setItem('blissMoodData', JSON.stringify(moodData));
+
+      // Reset form
+      moodButtons.forEach(b => b.classList.remove('active', 'ring-4', 'ring-purple-300'));
+      selectedMood = null;
+      noteInput.value = '';
+      logMoodBtn.disabled = true;
+
+      updateChart();
+      updateWeeklyStats();
+      showToast(`Mood logged: ${moodConfig[selectedMood].label} ${moodConfig[selectedMood].icon}`);
+    });
+
+    // Update Chart
+    function updateChart() {
+      const ctx = document.getElementById('moodChart').getContext('2d');
+      const last7Days = getLastNDays(30);
+
+      const data = last7Days.map(date => {
+        const entry = moodData.find(e => e.date === date);
+        return entry ? entry.value : null;
+      });
+
+      const labels = last7Days.map(date => {
+        const d = new Date(date);
+        return d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+      });
+
+      if (moodChart) moodChart.destroy();
+
+      noDataMsg.style.display = moodData.length === 0 ? 'block' : 'none';
+
+      moodChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Mood Trend',
+            data: data,
+            borderColor: 'rgba(139, 92, 246, 1)',
+            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: data.map(v => v ? moodConfig[Object.keys(moodConfig).find(k => moodConfig[k].value === v)].color : 'transparent'),
+            pointRadius: data.map(v => v ? 6 : 0),
+            pointHoverRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  if (!ctx.raw) return 'No entry';
+                  const mood = Object.values(moodConfig).find(m => m.value === ctx.raw);
+                  return `${mood.label} ${mood.icon}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 6,
+              ticks: {
+                stepSize: 1,
+                callback: value => {
+                  const mood = Object.values(moodConfig).find(m => m.value === value);
+                  return mood ? mood.icon : '';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Get last N days in YYYY-MM-DD
+    function getLastNDays(n) {
+      const dates = [];
+      for (let i = n - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(d.toLocaleDateString('en-CA'));
+      }
+      return dates;
+    }
+
+    // Weekly Stats
+    function updateWeeklyStats() {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - 7);
+      weekStart.setHours(0,0,0,0);
+
+      const weekData = moodData.filter(entry => new Date(entry.timestamp) >= weekStart);
+      if (weekData.length === 0) {
+        weeklyStats.innerHTML = '<p class="text-gray-600">No data this week.</p>';
+        return;
+      }
+
+      const counts = {};
+      weekData.forEach(e => {
+        counts[e.mood] = (counts[e.mood] || 0) + 1;
+      });
+
+      const sorted = Object.entries(counts)
+        .sort((a,b) => b[1] - a[1])
+        .slice(0, 3);
+
+      let html = '';
+      sorted.forEach(([mood, count]) => {
+        const cfg = moodConfig[mood];
+        html += `<div class="flex justify-between items-center">
+          <span class="flex items-center">
+            <span class="text-2xl mr-2">${cfg.icon}</span>
+            <span class="font-medium">${cfg.label}</span>
+          </span>
+          <span class="text-gray-600">${count} time${count > 1 ? 's' : ''}</span>
+        </div>`;
+      });
+
+      if (sorted.length < 3 && weekData.length > 0) {
+        html += `<p class="text-gray-500 text-xs mt-2">Keep logging for better insights!</p>`;
+      }
+
+      weeklyStats.innerHTML = html;
+    }
+
+    // Export Data
+    exportBtn.addEventListener('click', () => {
+      if (moodData.length === 0) {
+        showToast('No data to export!', 'warning');
+        return;
+      }
+
+      const csv = [
+        ['Date', 'Mood', 'Value', 'Note', 'Timestamp'],
+        ...moodData.map(e => [
+          e.date,
+          moodConfig[e.mood].label,
+          e.value,
+          `"${e.note.replace(/"/g, '""')}"`,
+          e.timestamp
+        ])
+      ].map(row => row.join(',')).join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `blissmood-export-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Data exported successfully!');
+    });
+
+    // Reminder Logic
+    reminderToggle.addEventListener('change', () => {
+      timePicker.classList.toggle('hidden', !reminderToggle.checked);
+      if (reminderToggle.checked) reminderTime.focus();
+    });
+
+    saveReminder.addEventListener('click', () => {
+      reminders = {
+        enabled: reminderToggle.checked,
+        time: reminderTime.value || '20:00'
+      };
+      localStorage.setItem('blissMoodReminders', JSON.stringify(reminders));
+      setupReminder();
+      showToast(reminders.enabled ? `Reminder set for ${reminders.time}` : 'Reminder disabled');
+    });
+
+    function setupReminder() {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+
+      if (reminders.enabled && 'serviceWorker' in navigator && 'PushManager' in window) {
+        // For real reminders, you'd register a service worker.
+        // Here we simulate with setInterval for demo.
+        checkReminder();
+        setInterval(checkReminder, 60000); // Check every minute
+      }
+    }
+
+    function checkReminder() {
+      if (!reminders.enabled) return;
+      const now = new Date();
+      const [h, m] = reminders.time.split(':');
+      if (now.getHours() === parseInt(h) && now.getMinutes() === parseInt(m)) {
+        if (localStorage.getItem('lastReminder') !== new Date().toDateString()) {
+          showNotification();
+          localStorage.setItem('lastReminder', new Date().toDateString());
+        }
+      }
+    }
+
+    function showNotification() {
+      if (Notification.permission === 'granted') {
+        new Notification('BlissMood Check-in', {
+          body: 'How are you feeling right now? 🌈',
+          icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23a78bfa%22/><text x=%2250%22 y=%2258%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22white%22>🌸</text></svg>'
+        });
+      }
+    }
+
+    // Toast Notification
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white font-medium text-sm z-50 transition-opacity duration-300 ${
+        type === 'success' ? 'bg-green-500' : 'bg-yellow-500'
+      }`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.style.opacity = '0', 2000);
+      setTimeout(() => toast.remove(), 2500);
+    }
+
+    // Initialize app
+    init();
+  </script>
+</body>
+</html>
